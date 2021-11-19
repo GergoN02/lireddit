@@ -1,0 +1,58 @@
+2021-11-15 03:39:37.172 GMT [15484] LOG:  starting PostgreSQL 12.9, compiled by Visual C++ build 1914, 64-bit
+2021-11-15 03:39:37.176 GMT [15484] LOG:  listening on IPv6 address "::1", port 5432
+2021-11-15 03:39:37.176 GMT [15484] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2021-11-15 03:39:37.301 GMT [7284] LOG:  database system was shut down at 2021-11-15 03:38:34 GMT
+2021-11-15 03:39:37.332 GMT [15484] LOG:  database system is ready to accept connections
+2021-11-15 03:40:12.470 GMT [15996] FATAL:  role "postgres" does not exist
+2021-11-15 03:56:55.381 GMT [18884] FATAL:  role "postgres" does not exist
+2021-11-15 03:57:14.624 GMT [15228] FATAL:  role "postgres" does not exist
+2021-11-15 03:57:14.655 GMT [4592] FATAL:  role "postgres" does not exist
+2021-11-15 03:57:16.397 GMT [19356] FATAL:  role "postgres" does not exist
+2021-11-15 03:57:16.423 GMT [19988] FATAL:  role "postgres" does not exist
+2021-11-15 04:00:49.189 GMT [4000] FATAL:  role "postgres" does not exist
+2021-11-15 04:00:49.212 GMT [18264] FATAL:  role "postgres" does not exist
+2021-11-15 04:01:29.606 GMT [18360] FATAL:  role "postgres" does not exist
+2021-11-15 04:01:29.636 GMT [4480] FATAL:  role "postgres" does not exist
+2021-11-15 04:03:56.538 GMT [11888] FATAL:  role "postgres" does not exist
+2021-11-15 04:03:56.564 GMT [17204] FATAL:  role "postgres" does not exist
+2021-11-15 04:04:00.635 GMT [580] FATAL:  role "postgres" does not exist
+2021-11-15 04:04:00.662 GMT [5544] FATAL:  role "postgres" does not exist
+2021-11-15 04:04:22.940 GMT [14060] FATAL:  role "postgres" does not exist
+2021-11-15 04:04:22.966 GMT [18796] FATAL:  role "postgres" does not exist
+2021-11-15 04:05:57.346 GMT [16116] FATAL:  role "postgres" does not exist
+2021-11-15 04:05:57.373 GMT [1364] FATAL:  role "postgres" does not exist
+2021-11-15 04:06:16.765 GMT [15368] FATAL:  role "postgres" does not exist
+2021-11-15 04:06:16.805 GMT [15864] FATAL:  role "postgres" does not exist
+2021-11-15 04:08:17.803 GMT [17832] FATAL:  role "postgres" does not exist
+2021-11-15 04:08:17.828 GMT [1080] FATAL:  role "postgres" does not exist
+2021-11-15 04:08:31.464 GMT [15088] FATAL:  role "postgres" does not exist
+2021-11-15 04:08:31.489 GMT [16616] FATAL:  role "postgres" does not exist
+2021-11-15 04:10:33.944 GMT [4272] FATAL:  role "postgres" does not exist
+2021-11-15 04:10:33.972 GMT [18824] FATAL:  role "postgres" does not exist
+2021-11-15 04:11:06.341 GMT [20264] FATAL:  role "postgres" does not exist
+2021-11-15 04:11:06.367 GMT [14468] FATAL:  role "postgres" does not exist
+2021-11-15 04:19:18.182 GMT [3420] LOG:  starting PostgreSQL 12.9, compiled by Visual C++ build 1914, 64-bit
+2021-11-15 04:19:18.186 GMT [3420] LOG:  listening on IPv6 address "::1", port 5432
+2021-11-15 04:19:18.186 GMT [3420] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2021-11-15 04:19:18.224 GMT [17476] LOG:  database system was shut down at 2021-11-15 04:18:51 GMT
+2021-11-15 04:19:18.237 GMT [3420] LOG:  database system is ready to accept connections
+2021-11-15 04:19:36.249 GMT [18036] FATAL:  role "postgres" does not exist
+2021-11-15 04:19:36.272 GMT [2888] FATAL:  role "postgres" does not exist
+2021-11-15 04:21:37.269 GMT [8352] FATAL:  role "postgres" does not exist
+2021-11-15 04:21:37.292 GMT [8784] FATAL:  role "postgres" does not exist
+2021-11-15 04:24:46.494 GMT [13228] FATAL:  database "Gergoo Nemeth" does not exist
+2021-11-15 04:24:56.314 GMT [13832] FATAL:  database "Gergoo Nemeth" does not exist
+2021-11-15 04:25:05.080 GMT [8408] FATAL:  database "/du" does not exist
+2021-11-15 04:25:12.189 GMT [16008] FATAL:  database "/lireddit" does not exist
+2021-11-15 04:25:35.246 GMT [2616] FATAL:  database "Gergoo Nemeth" does not exist
+2021-11-15 04:26:07.763 GMT [11936] ERROR:  syntax error at or near "/" at character 1
+2021-11-15 04:26:07.763 GMT [11936] STATEMENT:  /du
+	clear
+	CREATE USER postgres SUPERUSER
+	CREATE USER postgres SUPERUSER;
+2021-11-15 04:26:17.116 GMT [3420] LOG:  received fast shutdown request
+2021-11-15 04:26:17.117 GMT [3008] ERROR:  canceling statement due to user request
+2021-11-15 04:26:17.121 GMT [3420] LOG:  aborting any active transactions
+2021-11-15 04:26:17.122 GMT [3420] LOG:  background worker "logical replication launcher" (PID 3008) exited with exit code 1
+2021-11-15 04:26:17.125 GMT [16760] LOG:  shutting down
+2021-11-15 04:26:17.151 GMT [3420] LOG:  database system is shut down
