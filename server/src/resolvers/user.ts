@@ -5,10 +5,12 @@ import {
   Arg,
   Ctx,
   Field,
+  FieldResolver,
   Mutation,
   ObjectType,
   Query,
   Resolver,
+  Root,
 } from "type-graphql";
 import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../consts";
 import { User } from "../entities/User";
@@ -33,8 +35,23 @@ class UserResponse {
   user?: User;
 }
 
-@Resolver()
+@Resolver(User)
 export class UserResolver {
+
+  
+  @FieldResolver(() => String)
+  email(@Root() user: User, @Ctx() {req}: MyContext){
+    //if current user with current email logged in, email can be displayed
+    if(req.session.userId === user.id){
+      return user.email;
+    }
+    //if current user wants to see other users email
+    return "";
+  }
+
+
+
+
   @Query(() => User, { nullable: true })
     me(@Ctx() { req }: MyContext) {
     if (!req.session.userId) {
