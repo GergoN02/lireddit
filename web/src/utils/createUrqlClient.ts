@@ -2,9 +2,11 @@ import {
   dedupExchange,
   Exchange,
   fetchExchange,
+  gql,
   stringifyVariables,
 } from "@urql/core";
 import { cacheExchange, Resolver } from "@urql/exchange-graphcache";
+import { readFragment } from "@urql/exchange-graphcache/dist/types/operations/query";
 import router from "next/router";
 import { pipe, tap } from "wonka";
 import {
@@ -13,10 +15,11 @@ import {
   MeDocument,
   MeQuery,
   RegisterMutation,
+  VoteMutationVariables,
 } from "../generated/graphql";
 import { betterUpdateQuery } from "./betterUpdateQuery";
 
-export const errorExchange: Exchange =
+const errorExchange: Exchange =
   ({ forward }) =>
   (ops$) => {
     return pipe(
@@ -40,14 +43,29 @@ const cursorPagination = (): Resolver => {
     }
 
     const fieldKey = `${fieldName}(${stringifyVariables(fieldArgs)})`;
-    const isInCache = cache.resolve(entityKey, fieldKey);
+    const isInCache = cache.resolve(
+      cache.resolve(entityKey, fieldKey) as string,
+      "posts"
+    );
     info.partial = !isInCache;
+
+    let hasMore = true;
     const results: string[] = [];
     fieldInfos.forEach((fi) => {
-      const postsData = cache.resolve(entityKey, fi.fieldKey) as string[];
+      const key = cache.resolve(entityKey, fi.fieldKey) as string;
+      const postsData = cache.resolve(key, "posts") as string[];
+      const hasMoreKey = cache.resolve(key, "hasMore");
+      if (!hasMoreKey) {
+        hasMore = hasMoreKey as boolean;
+      }
+      // console.log("data: ", hasMore, postsData);
       results.push(...postsData);
     });
-    return results;
+    return {
+      __typename: "PaginatedPosts",
+      hasMore,
+      posts: results,
+    };
   };
 };
 
@@ -59,6 +77,9 @@ export const createUrqlClient = (ssrExchange: any) => ({
   exchanges: [
     dedupExchange,
     cacheExchange({
+      keys: {
+        PaginatedPosts: () => null,
+      },
       resolvers: {
         Query: {
           posts: cursorPagination(),
@@ -66,6 +87,36 @@ export const createUrqlClient = (ssrExchange: any) => ({
       },
       updates: {
         Mutation: {
+          vote: (_result, args, cache, info) => {
+            const { postId, value } = args as VoteMutationVariables;
+            const data = cache.readFragment(
+              gql`
+              fragment _ on Post {
+                id
+                points
+              }`, {id: postId}
+            );
+
+            if (data) {
+              const newPoints = data.points + value;
+              cache.writeFragment(
+                gql`
+                fragment _ on Post {
+                  poitns
+                }`,
+                {id: postId, points: newPoints}
+              )
+            }
+
+          },
+          createPost: (_result, args, cache, info) => {
+            const allFields = cache.inspectFields("Query");
+            const fieldInfos = allFields.filter((info) => info.fieldName === 'posts');
+            fieldInfos.forEach((fi)=> {
+              cache.invalidate("Query", "posts", fi.arguments || {});
+            });
+          },
+
           logout: (_result, args, cache, info) => {
             // Cache reset on logout
             betterUpdateQuery<LogoutMutation, MeQuery>(

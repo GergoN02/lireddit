@@ -6,12 +6,12 @@ import { Box, Flex, Heading, Link, Stack, Text } from "@chakra-ui/layout";
 import NextLink from "next/link";
 import React, { useState } from "react";
 import { Button } from "@chakra-ui/button";
+import { VoteSection } from "../components/VoteSection";
 
 const Index = () => {
   const [variables, setVariables] = useState({
-    limit: 10,
+    limit: 15,
     cursor: null as null | string,
-
   });
 
   const [{ data, fetching }] = usePostsQuery({
@@ -19,7 +19,7 @@ const Index = () => {
   });
 
   if (!fetching && !data) {
-    return <div>Query failed...sad</div>
+    return <div>Query failed...sad</div>;
   }
 
   return (
@@ -35,24 +35,41 @@ const Index = () => {
         <div>Loading...</div>
       ) : (
         <Stack spacing={8}>
-          {data!.posts.map((p) => (
-            <Box key={p.id} p={5} shadow="md" borderWidth="1px">
-              <Heading fontSize="xl">{p.title}</Heading>
-              <Text mt={4}>{p.textSnippet}</Text>
-            </Box>
+          {data!.posts.posts.map((p) => (
+            <Flex key={p.id} p={5} shadow="md" borderWidth="1px">
+              <VoteSection post={p}/>
+              <Box>
+                <Flex>
+                  <Box>
+                  <Heading fontSize="xl">{p.title}</Heading>
+                  </Box>
+                  <Box>
+                  <Text mr="auto">Posted by: {p.postCreator.username}</Text>
+                  </Box>
+                </Flex>
+                <Text mt={4}>{p.textSnippet}</Text>
+              </Box>
+            </Flex>
           ))}
         </Stack>
       )}
-      {data ? <Flex>
-        <Button onClick={() => {
-        setVariables({
-          limit: variables?.limit,
-          cursor: data.posts[data.posts.length - 1].createdAt,
-        },
-      );
-     }} isLoading={fetching} m='auto' my={8}>Load More</Button>
-      </Flex>
-      : null }
+      {data && data.posts.hasMore ? (
+        <Flex>
+          <Button
+            onClick={() => {
+              setVariables({
+                limit: variables?.limit,
+                cursor: data.posts.posts[data.posts.posts.length - 1].createdAt,
+              });
+            }}
+            isLoading={fetching}
+            m="auto"
+            my={8}
+          >
+            Load More
+          </Button>
+        </Flex>
+      ) : null}
     </Layout>
   );
 };
