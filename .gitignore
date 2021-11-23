@@ -1,1 +1,13 @@
 node_modules
+.next
+dump.rdb
+server/dist/index.js
+server/dist/index.js.map
+server/dist/migrations/1637356152188-FakePosts.js
+server/dist/migrations/1637356152188-FakePosts.js.map
+server/dist/migrations/1637356552022-FakePosts.js
+server/dist/migrations/1637356552022-FakePosts.js.map
+server/dist/resolvers/post.js
+server/dist/resolvers/post.js.map
+server/dist/resolvers/user.js
+server/dist/resolvers/user.js.map
