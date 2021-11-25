@@ -1,0 +1,4 @@
+ssr (server-side rendering)
+    browser -> next.js -> graphql api
+csr (client-side rendering)
+    browser -> graphql api

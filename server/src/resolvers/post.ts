@@ -36,7 +36,6 @@ class PaginatedPosts {
 
 @Resolver(Post)
 export class PostResolver {
-
   @FieldResolver(() => String)
   textSnippet(@Root() root: Post) {
     return root.text.slice(0, 50);
@@ -53,40 +52,48 @@ export class PostResolver {
     const insertValue = isUpvote ? 1 : -1;
     const { userId } = req.session;
 
-    const upvote = await Upvote.findOne({where: {postId, userId}})
+    const upvote = await Upvote.findOne({ where: { postId, userId } });
 
     //Changing vote on post
-    if(upvote && upvote.value !== insertValue) {
-
+    if (upvote && upvote.value !== insertValue) {
       await getConnection().transaction(async (tm) => {
-        await tm.query(`
+        await tm.query(
+          `
         update upvote
         set value = $1
         where "postId" = $2 and "userId" = $3
-        `, [insertValue, postId, userId]);
+        `,
+          [insertValue, postId, userId]
+        );
 
-        await tm.query(`
+        await tm.query(
+          `
         update post
         set points = points + $1
         where id = $2
-        `, [2 * insertValue, postId]);
-
-      })
-
+        `,
+          [2 * insertValue, postId]
+        );
+      });
     } else if (!upvote) {
       //Not voted on post before
       await getConnection().transaction(async (tm) => {
         await tm.query(
-        `insert into upvote ("userId", "postId", value)
+          `insert into upvote ("userId", "postId", value)
         values ($1, $2, $3)        
-        `, [userId, postId, insertValue]);
-      
-        await tm.query(`
+        `,
+          [userId, postId, insertValue]
+        );
+
+        await tm.query(
+          `
           update post
           set points = points + $1
           where id = $2
-        `, [insertValue, postId]);
-      })
+        `,
+          [insertValue, postId]
+        );
+      });
     }
 
     return true;
@@ -96,15 +103,22 @@ export class PostResolver {
   async posts(
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string,
-    @Ctx() {req}: MyContext
+    @Ctx() { req }: MyContext
   ): Promise<PaginatedPosts> {
     const postDisplayLimit = Math.min(50, limit);
     const paginateFetchLimit = postDisplayLimit + 1; // +1 for checking if there are more posts available, only return realLimit number
 
-    const replacements: any[] = [paginateFetchLimit, req.session.userId];
+    const replacements: any[] = [paginateFetchLimit];
+
+    if (req.session.userId) {
+      replacements.push(req.session.userId);
+    }
+
+    let cursorIdx = 3;
 
     if (cursor) {
       replacements.push(new Date(parseInt(cursor)));
+      cursorIdx = replacements.length;
     }
 
     const posts = await getConnection().query(
@@ -118,17 +132,21 @@ export class PostResolver {
         'updatedAt', u."updatedAt"
         ) "postCreator",
         ${
-          req.session.userId ? '(select value from upvote where "userId" = $2 and "postId" = p.id) "voteStatus"' : 'null as "voteStatus"'}
+          req.session.userId
+            ? '(select value from upvote where "userId" = $2 and "postId" = p.id) "voteStatus"'
+            : 'null as "voteStatus"'
+        }
       from post p
       inner join public.user u on u.id = p."postCreatorId"
-      ${cursor ? `where p."createdAt" < $3` : ""}
+      ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
       order by p."createdAt" DESC
       limit $1
       `,
       replacements
     );
 
-    console.log("posts: ", posts);
+    // console.log("posts: ", posts);
+    console.log(replacements);
 
     return {
       posts: posts.slice(0, postDisplayLimit),
@@ -137,10 +155,10 @@ export class PostResolver {
   }
 
   @Query(() => Post, { nullable: true }) //GraphQL type or nullable
-  post(@Arg("id") id: number): Promise<Post | undefined> {
+  post(@Arg("id", () => Int) id: number): Promise<Post | undefined> {
     // type-graphql type
 
-    return Post.findOne(id);
+    return Post.findOne(id, { relations: ["postCreator"] });
   }
 
   @Mutation(() => Post) //GraphQL type
@@ -157,9 +175,12 @@ export class PostResolver {
   }
 
   @Mutation(() => Post, { nullable: true }) //GraphQL type
+  @UseMiddleware(isAuth)
   async updatePost(
     @Arg("id") id: number,
-    @Arg("title", () => String, { nullable: true }) title: string
+    @Arg("title") title: string,
+    @Arg("text") text: string,
+    @Ctx() {req}: MyContext
   ): Promise<Post | null> {
     // type-graphql type
 
@@ -167,15 +188,29 @@ export class PostResolver {
     if (!post) {
       return null;
     }
-    if (typeof title !== "undefined") {
-      (post.title = title), await Post.update({ id }, { title });
-    }
+    await Post.update({ id }, { title, text });
     return post;
   }
 
   @Mutation(() => Boolean)
-  async deletePost(@Arg("id", () => Int) id: number): Promise<boolean> {
-    await Post.delete(id);
+  @UseMiddleware(isAuth)
+  async deletePost(
+    @Arg("id", () => Int) id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<boolean> {
+    //Not-Cascaded method: 
+    // const post = await Post.findOne(id);
+    // if (!post) {
+    //   return false
+    // }
+    // if (post.postCreatorId !== req.session.userId) {
+    //   throw new Error("Not authorized")
+    // }
+    // await Upvote.delete({postId: id});
+    // await Post.delete({ id });
+
+    //Cascade method, requires attribute in entity definition
+    await Post.delete({id, postCreatorId: req.session.userId})
     return true;
   }
 }
