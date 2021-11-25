@@ -18,16 +18,17 @@ const typeorm_1 = require("typeorm");
 const Post_1 = require("./entities/Post");
 const User_1 = require("./entities/User");
 const path_1 = __importDefault(require("path"));
+const Upvote_1 = require("./entities/Upvote");
 const main = async () => {
     const conn = await typeorm_1.createConnection({
         type: 'postgres',
-        database: 'lireddit2',
+        database: 'lireddit',
         username: 'postgres',
         password: 'postgres',
         logging: true,
         synchronize: true,
         migrations: [path_1.default.join(__dirname, "./migrations/*")],
-        entities: [Post_1.Post, User_1.User],
+        entities: [Post_1.Post, User_1.User, Upvote_1.Upvote],
     });
     await conn.runMigrations();
     const expressServer = 4000;
