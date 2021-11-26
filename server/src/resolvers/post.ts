@@ -17,6 +17,7 @@ import { MyContext } from "src/types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Upvote } from "../entities/Upvote";
+import { User } from "../entities/User";
 
 @InputType()
 class PostInput {
@@ -39,6 +40,26 @@ export class PostResolver {
   @FieldResolver(() => String)
   textSnippet(@Root() root: Post) {
     return root.text.slice(0, 50);
+  }
+
+  @FieldResolver(() => User)
+  postCreator(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
+    return userLoader.load(post.postCreatorId);
+  }
+
+  @FieldResolver(() => Int, {nullable: true})
+  async voteStatus(@Root() post: Post, @Ctx() { upvoteLoader, req }: MyContext){
+
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const upvote = await upvoteLoader.load({
+      postId: post.id,
+      userId: req.session.userId
+    })
+
+    return upvote ? upvote.value : null;
   }
 
   @Mutation(() => Boolean)
@@ -102,43 +123,22 @@ export class PostResolver {
   @Query(() => PaginatedPosts) //GraphQL type
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string,
-    @Ctx() { req }: MyContext
+    @Arg("cursor", () => String, { nullable: true }) cursor: string
   ): Promise<PaginatedPosts> {
     const postDisplayLimit = Math.min(50, limit);
     const paginateFetchLimit = postDisplayLimit + 1; // +1 for checking if there are more posts available, only return realLimit number
 
-    const replacements: any[] = [paginateFetchLimit];
-
-    if (req.session.userId) {
-      replacements.push(req.session.userId);
-    }
-
-    let cursorIdx = 3;
+    const replacements: any[] = [paginateFetchLimit]; 
 
     if (cursor) {
       replacements.push(new Date(parseInt(cursor)));
-      cursorIdx = replacements.length;
     }
 
     const posts = await getConnection().query(
       `
-      select p.*,
-      json_build_object(
-        'id', u.id,
-        'username', u.username,
-        'email', u.email,
-        'createdAt', u."createdAt",
-        'updatedAt', u."updatedAt"
-        ) "postCreator",
-        ${
-          req.session.userId
-            ? '(select value from upvote where "userId" = $2 and "postId" = p.id) "voteStatus"'
-            : 'null as "voteStatus"'
-        }
+      select p.*
       from post p
-      inner join public.user u on u.id = p."postCreatorId"
-      ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
+      ${cursor ? `where p."createdAt" < $2` : ""}
       order by p."createdAt" DESC
       limit $1
       `,
@@ -158,7 +158,7 @@ export class PostResolver {
   post(@Arg("id", () => Int) id: number): Promise<Post | undefined> {
     // type-graphql type
 
-    return Post.findOne(id, { relations: ["postCreator"] });
+    return Post.findOne(id);
   }
 
   @Mutation(() => Post) //GraphQL type
@@ -177,19 +177,24 @@ export class PostResolver {
   @Mutation(() => Post, { nullable: true }) //GraphQL type
   @UseMiddleware(isAuth)
   async updatePost(
-    @Arg("id") id: number,
+    @Arg("id", () => Int) id: number,
     @Arg("title") title: string,
     @Arg("text") text: string,
-    @Ctx() {req}: MyContext
+    @Ctx() { req }: MyContext
   ): Promise<Post | null> {
     // type-graphql type
+    const result = await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ title, text })
+      .where('id = :id and "postCreatorId"= :postCreatorId', {
+        id,
+        postCreatorId: req.session.userId,
+      })
+      .returning("*")
+      .execute();
 
-    const post = await Post.findOne(id);
-    if (!post) {
-      return null;
-    }
-    await Post.update({ id }, { title, text });
-    return post;
+    return result.raw[0];
   }
 
   @Mutation(() => Boolean)
@@ -198,7 +203,7 @@ export class PostResolver {
     @Arg("id", () => Int) id: number,
     @Ctx() { req }: MyContext
   ): Promise<boolean> {
-    //Not-Cascaded method: 
+    //Not-Cascaded method:
     // const post = await Post.findOne(id);
     // if (!post) {
     //   return false
@@ -210,7 +215,7 @@ export class PostResolver {
     // await Post.delete({ id });
 
     //Cascade method, requires attribute in entity definition
-    await Post.delete({id, postCreatorId: req.session.userId})
+    await Post.delete({ id, postCreatorId: req.session.userId });
     return true;
   }
 }

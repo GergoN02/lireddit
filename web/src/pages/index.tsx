@@ -1,14 +1,13 @@
-import { withUrqlClient } from "next-urql";
-import { createUrqlClient } from "../utils/createUrqlClient";
-import { useDeletePostMutation, useMeQuery, usePostsQuery } from "../generated/graphql";
-import { Layout } from "../components/Layout";
+import { Button } from "@chakra-ui/button";
 import { Box, Flex, Heading, Link, Stack, Text } from "@chakra-ui/layout";
+import { withUrqlClient } from "next-urql";
 import NextLink from "next/link";
 import React, { useState } from "react";
-import { Button } from "@chakra-ui/button";
+import { EditDeletePostBtns } from "../components/EditDeletePostBtns";
+import { Layout } from "../components/Layout";
 import { VoteSection } from "../components/VoteSection";
-import { IconButton } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { usePostsQuery } from "../generated/graphql";
+import { createUrqlClient } from "../utils/createUrqlClient";
 
 const Index = () => {
   const [variables, setVariables] = useState({
@@ -16,16 +15,17 @@ const Index = () => {
     cursor: null as null | string,
   });
 
-  const [{ data, fetching }] = usePostsQuery({
+  const [{ data, error, fetching }] = usePostsQuery({
     variables,
   });
 
-  const [, deletePost] = useDeletePostMutation();
-
-  const [{ data: meData }] = useMeQuery();
-
   if (!fetching && !data) {
-    return <div>Query failed...sad</div>;
+    return (
+      <div>
+        <div>Query failed...sad</div>
+        <div>{error?.message}</div>
+      </div>
+    );
   }
 
   return (
@@ -34,33 +34,31 @@ const Index = () => {
         <div>Loading...</div>
       ) : (
         <Stack spacing={8}>
-          {data!.posts.posts.map((p) => !p ? null : (
-            <Flex key={p.id} p={5} shadow="md" borderWidth="1px">
-              <VoteSection post={p} />
-              <Box flex={1}>
-                <NextLink href="/post/[id]" as={`/post/${p.id}`}>
-                  <Link>
-                    <Heading fontSize="xl">{p.title}</Heading>
-                  </Link>
-                </NextLink>
-                <Text ml="auto">Posted by: {p.postCreator.username}</Text>
-                <Flex asign="center">
-                  <Text mt={4}>{p.textSnippet}</Text>
-                  <IconButton
-                    ml="auto"
-                    colorScheme="red"
-                    icon={<DeleteIcon />}
-                    aria-label="delete-post"
-                    isDisabled={meData && p.postCreator.id !== meData.me?.id ? true : false}
-                    onClick={() => {
-                      deletePost({id: p.id})
-                    }}
-                  ></IconButton>
-                  <div>{}</div>
-                </Flex>
-              </Box>
-            </Flex>
-          ))}
+          {data!.posts.posts.map((p) =>
+            !p ? null : (
+              <Flex key={p.id} p={5} shadow="md" borderWidth="1px">
+                <VoteSection post={p} />
+                <Box flex={1}>
+                  <NextLink href="/post/[id]" as={`/post/${p.id}`}>
+                    <Link>
+                      <Heading fontSize="xl">{p.title}</Heading>
+                    </Link>
+                  </NextLink>
+                  <Text ml="auto">Posted by: {p.postCreator.username}</Text>
+                  <Flex asign="center">
+                    <Text mt={4}>{p.textSnippet}</Text>
+
+                    <Box ml="auto">
+                      <EditDeletePostBtns
+                        id={p.id}
+                        postCreatorId={p.postCreator.id}
+                      />
+                    </Box>
+                  </Flex>
+                </Box>
+              </Flex>
+            )
+          )}
         </Stack>
       )}
       {data && data.posts.hasMore ? (

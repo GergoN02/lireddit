@@ -9,18 +9,20 @@ import { COOKIE_NAME, __prod__ } from "./consts";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-import {createConnection} from 'typeorm';
+import { createConnection } from "typeorm";
 import { Post } from "./entities/Post";
 import { User } from "./entities/User";
 import path from "path";
 import { Upvote } from "./entities/Upvote";
+import { createUserLoader } from "./utils/createUserLoader";
+import { createUpvoteLoader } from "./utils/createUpvoteLoader";
 
 const main = async () => {
   const conn = await createConnection({
-    type: 'postgres',
-    database: 'lireddit',
-    username: 'postgres',
-    password: 'postgres',
+    type: "postgres",
+    database: "lireddit",
+    username: "postgres",
+    password: "postgres",
     logging: true,
     synchronize: true,
     migrations: [path.join(__dirname, "./migrations/*")],
@@ -34,13 +36,15 @@ const main = async () => {
   const expressServer = 4000;
   const app = express();
 
-  const RedisStore = require('connect-redis')(session);
+  const RedisStore = require("connect-redis")(session);
   const redis = new Redis();
 
-  app.use(cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  }));
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true,
+    })
+  );
 
   app.use(
     session({
@@ -67,14 +71,21 @@ const main = async () => {
       validate: false,
     }),
 
-    context: ({ req, res })=> ({ req, res, redis }),
+    context: ({ req, res }) => ({
+      req,
+      res,
+      redis,
+      userLoader: createUserLoader(), //for DataLoader
+      upvoteLoader: createUpvoteLoader(),
+    }),
   });
 
   await apolloServer.start();
 
-  apolloServer.applyMiddleware({ 
+  apolloServer.applyMiddleware({
     app,
-    cors: false });
+    cors: false,
+  });
 
   // app.get('/', (_, res) => {
   //   res.send("hello")

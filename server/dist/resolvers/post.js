@@ -18,6 +18,7 @@ const type_graphql_1 = require("type-graphql");
 const isAuth_1 = require("../middleware/isAuth");
 const typeorm_1 = require("typeorm");
 const Upvote_1 = require("../entities/Upvote");
+const User_1 = require("../entities/User");
 let PostInput = class PostInput {
 };
 __decorate([
@@ -47,6 +48,19 @@ PaginatedPosts = __decorate([
 let PostResolver = class PostResolver {
     textSnippet(root) {
         return root.text.slice(0, 50);
+    }
+    postCreator(post, { userLoader }) {
+        return userLoader.load(post.postCreatorId);
+    }
+    async voteStatus(post, { upvoteLoader, req }) {
+        if (!req.session.userId) {
+            return null;
+        }
+        const upvote = await upvoteLoader.load({
+            postId: post.id,
+            userId: req.session.userId
+        });
+        return upvote ? upvote.value : null;
     }
     async vote(postId, value, { req }) {
         const isUpvote = value !== -1;
@@ -81,33 +95,17 @@ let PostResolver = class PostResolver {
         }
         return true;
     }
-    async posts(limit, cursor, { req }) {
+    async posts(limit, cursor) {
         const postDisplayLimit = Math.min(50, limit);
         const paginateFetchLimit = postDisplayLimit + 1;
         const replacements = [paginateFetchLimit];
-        if (req.session.userId) {
-            replacements.push(req.session.userId);
-        }
-        let cursorIdx = 3;
         if (cursor) {
             replacements.push(new Date(parseInt(cursor)));
-            cursorIdx = replacements.length;
         }
         const posts = await typeorm_1.getConnection().query(`
-      select p.*,
-      json_build_object(
-        'id', u.id,
-        'username', u.username,
-        'email', u.email,
-        'createdAt', u."createdAt",
-        'updatedAt', u."updatedAt"
-        ) "postCreator",
-        ${req.session.userId
-            ? '(select value from upvote where "userId" = $2 and "postId" = p.id) "voteStatus"'
-            : 'null as "voteStatus"'}
+      select p.*
       from post p
-      inner join public.user u on u.id = p."postCreatorId"
-      ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
+      ${cursor ? `where p."createdAt" < $2` : ""}
       order by p."createdAt" DESC
       limit $1
       `, replacements);
@@ -118,18 +116,23 @@ let PostResolver = class PostResolver {
         };
     }
     post(id) {
-        return Post_1.Post.findOne(id, { relations: ["postCreator"] });
+        return Post_1.Post.findOne(id);
     }
     async createPost(input, { req }) {
         return Post_1.Post.create(Object.assign(Object.assign({}, input), { postCreatorId: req.session.userId })).save();
     }
     async updatePost(id, title, text, { req }) {
-        const post = await Post_1.Post.findOne(id);
-        if (!post) {
-            return null;
-        }
-        await Post_1.Post.update({ id }, { title, text });
-        return post;
+        const result = await typeorm_1.getConnection()
+            .createQueryBuilder()
+            .update(Post_1.Post)
+            .set({ title, text })
+            .where('id = :id and "postCreatorId"= :postCreatorId', {
+            id,
+            postCreatorId: req.session.userId,
+        })
+            .returning("*")
+            .execute();
+        return result.raw[0];
     }
     async deletePost(id, { req }) {
         await Post_1.Post.delete({ id, postCreatorId: req.session.userId });
@@ -144,6 +147,20 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PostResolver.prototype, "textSnippet", null);
 __decorate([
+    type_graphql_1.FieldResolver(() => User_1.User),
+    __param(0, type_graphql_1.Root()), __param(1, type_graphql_1.Ctx()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Post_1.Post, Object]),
+    __metadata("design:returntype", void 0)
+], PostResolver.prototype, "postCreator", null);
+__decorate([
+    type_graphql_1.FieldResolver(() => type_graphql_1.Int, { nullable: true }),
+    __param(0, type_graphql_1.Root()), __param(1, type_graphql_1.Ctx()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Post_1.Post, Object]),
+    __metadata("design:returntype", Promise)
+], PostResolver.prototype, "voteStatus", null);
+__decorate([
     type_graphql_1.Mutation(() => Boolean),
     type_graphql_1.UseMiddleware(isAuth_1.isAuth),
     __param(0, type_graphql_1.Arg("postId", () => type_graphql_1.Int)),
@@ -157,9 +174,8 @@ __decorate([
     type_graphql_1.Query(() => PaginatedPosts),
     __param(0, type_graphql_1.Arg("limit", () => type_graphql_1.Int)),
     __param(1, type_graphql_1.Arg("cursor", () => String, { nullable: true })),
-    __param(2, type_graphql_1.Ctx()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String, Object]),
+    __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", Promise)
 ], PostResolver.prototype, "posts", null);
 __decorate([
@@ -181,7 +197,7 @@ __decorate([
 __decorate([
     type_graphql_1.Mutation(() => Post_1.Post, { nullable: true }),
     type_graphql_1.UseMiddleware(isAuth_1.isAuth),
-    __param(0, type_graphql_1.Arg("id")),
+    __param(0, type_graphql_1.Arg("id", () => type_graphql_1.Int)),
     __param(1, type_graphql_1.Arg("title")),
     __param(2, type_graphql_1.Arg("text")),
     __param(3, type_graphql_1.Ctx()),

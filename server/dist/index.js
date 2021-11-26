@@ -19,12 +19,14 @@ const Post_1 = require("./entities/Post");
 const User_1 = require("./entities/User");
 const path_1 = __importDefault(require("path"));
 const Upvote_1 = require("./entities/Upvote");
+const createUserLoader_1 = require("./utils/createUserLoader");
+const createUpvoteLoader_1 = require("./utils/createUpvoteLoader");
 const main = async () => {
     const conn = await typeorm_1.createConnection({
-        type: 'postgres',
-        database: 'lireddit',
-        username: 'postgres',
-        password: 'postgres',
+        type: "postgres",
+        database: "lireddit",
+        username: "postgres",
+        password: "postgres",
         logging: true,
         synchronize: true,
         migrations: [path_1.default.join(__dirname, "./migrations/*")],
@@ -33,7 +35,7 @@ const main = async () => {
     await conn.runMigrations();
     const expressServer = 4000;
     const app = express_1.default();
-    const RedisStore = require('connect-redis')(express_session_1.default);
+    const RedisStore = require("connect-redis")(express_session_1.default);
     const redis = new ioredis_1.default();
     app.use(cors_1.default({
         origin: "http://localhost:3000",
@@ -60,12 +62,18 @@ const main = async () => {
             resolvers: [hello_1.HelloResolver, post_1.PostResolver, user_1.UserResolver],
             validate: false,
         }),
-        context: ({ req, res }) => ({ req, res, redis }),
+        context: ({ req, res }) => ({
+            req,
+            res,
+            redis,
+            userLoader: createUserLoader_1.createUserLoader(),
+            upvoteLoader: createUpvoteLoader_1.createUpvoteLoader(),
+        }),
     });
     await apolloServer.start();
     apolloServer.applyMiddleware({
         app,
-        cors: false
+        cors: false,
     });
     app.listen(expressServer, () => {
         console.log("Server started on localhost:", expressServer);
